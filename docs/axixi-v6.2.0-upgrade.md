@@ -59,3 +59,4 @@
 - Toolchain: Qt 6.12.0 MSVC2022 x64, Visual Studio 2022 17.14.23, MSVC 14.44.35207, Windows SDK 10.0.26100, WiX 7.0.0, upstream Windows dependency release v19.
 - Deliverables and SHA-256 values are in `build/artifacts/`. The Windows binaries are unsigned. See [Chinese delivery and acceptance notes](axixi-v6.2.0-release-notes.zh-CN.md).
 - Actual streaming, controller input, HDR/VRR, clean installation, upgrade/uninstall, and non-Windows execution remain manual acceptance items. These results are not implied by a successful build or startup probe.
+- Follow-up: an actual installation over upstream 6.2.0 retained its equal-version executable. The installer now includes equal versions in its major-upgrade range; packaging and deployment hash checks were added. See [same-version installer fix](axixi-same-version-install-fix.md). The new installer reuses the validated application payload; user install/streaming acceptance remains pending.

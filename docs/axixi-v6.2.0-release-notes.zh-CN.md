@@ -10,6 +10,8 @@
 
 文件位于仓库的 `build/artifacts/`。应用内部版本为 6.2.0，Windows 文件版本为 6.2.0.0。文件未经代码签名。本次只交付 Windows x64 包，保留其他平台源码。
 
+安装器已补充同版本覆盖支持，可直接覆盖官方 6.2.0 或此前 Axixi 6.2.0 包；无需先卸载。安装后请运行随包提供的 `Test-AxixiInstallation.ps1`，根据 `Moonlight-install-manifest.json` 核对主程序哈希。详见 [同版本安装修复与检查方法](axixi-same-version-install-fix.md)。该修复只更新安装器，便携 ZIP 内容保持不变。
+
 ## 保留的 Axixi 内容
 
 - 解锁后最高 1000 Mbps 码率；未解锁时最高 150 Mbps。
