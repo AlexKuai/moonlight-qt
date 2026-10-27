@@ -3,6 +3,8 @@
 #include "utils.h"
 #include "streaming/session.h"
 
+#include <QTime>
+
 #include <h264_stream.h>
 
 extern "C" {
@@ -885,7 +887,7 @@ void FFmpegVideoDecoder::stringifyVideoStats(VIDEO_STATS& stats, char* output, i
             if (lite) {
                 ret = snprintf(&output[offset],
                                length - offset,
-                               "  %dx%d %.2f FPS %s  ",
+                               "%dx%d %.2f FPS %s",
                                m_VideoDecoderCtx->width,
                                m_VideoDecoderCtx->height,
                                stats.totalFps,
@@ -893,7 +895,7 @@ void FFmpegVideoDecoder::stringifyVideoStats(VIDEO_STATS& stats, char* output, i
             } else {
                 ret = snprintf(&output[offset],
                                length - offset,
-                               "视频流: %dx%d %.2f FPS (Codec: %s)  ",
+                               "视频流: %dx%d %.2f FPS (Codec: %s)",
                                m_VideoDecoderCtx->width,
                                m_VideoDecoderCtx->height,
                                stats.totalFps,
@@ -908,7 +910,7 @@ void FFmpegVideoDecoder::stringifyVideoStats(VIDEO_STATS& stats, char* output, i
             offset += ret;
 #ifdef DISPLAY_BITRATE
             ret = snprintf(&output[offset], length - offset,
-                           lite ? "码率: %.1f Mbps 峰值(%us): %.1f  "
+                           lite ? " 码率: %.1f Mbps 峰值(%us): %.1f"
                                 : "\n码率: %.1f Mbps 峰值(%us): %.1f\n",
                            m_BwTracker.GetAverageMbps(), m_BwTracker.GetWindowSeconds(),
                            m_BwTracker.GetPeakMbps());
@@ -923,7 +925,8 @@ void FFmpegVideoDecoder::stringifyVideoStats(VIDEO_STATS& stats, char* output, i
         if (!lite) {
             ret = snprintf(&output[offset],
                            length - offset,
-                           "帧率: 接收/解码/渲染 %.2f/%.2f/%.2f FPS\n",
+                           "%s帧率: 接收/解码/渲染 %.2f/%.2f/%.2f FPS\n",
+                           offset > 0 && output[offset - 1] != '\n' ? " " : "",
                            stats.receivedFps,
                            stats.decodedFps,
                            stats.renderedFps);
@@ -940,7 +943,7 @@ void FFmpegVideoDecoder::stringifyVideoStats(VIDEO_STATS& stats, char* output, i
         if (stats.framesWithHostProcessingLatency > 0) {
             ret = snprintf(&output[offset],
                            length - offset,
-                           "主机编码: 最小 %.1f/最大 %.1f/平均 %.1f ms  ",
+                           "主机编码: 最小 %.1f/最大 %.1f/平均 %.1f ms",
                            (float)stats.minHostProcessingLatency / 10,
                            (float)stats.maxHostProcessingLatency / 10,
                            (float)stats.totalHostProcessingLatency / 10 / stats.framesWithHostProcessingLatency);
@@ -967,8 +970,9 @@ void FFmpegVideoDecoder::stringifyVideoStats(VIDEO_STATS& stats, char* output, i
         if (lite) {
             ret = snprintf(&output[offset],
                            length - offset,
-                           "网络: %s 丢包率：%.2f%% 抖动：%.2f%% "
-                           "解码：%.2f ms 帧队列: %.2f ms  \n",
+                           "%s网络: %s 丢包率: %.2f%% 抖动: %.2f%% "
+                           "解码: %.2f ms 帧队列: %.2f ms",
+                           offset > 0 && output[offset - 1] != '\n' ? " " : "",
                            rttString,
                            (float)stats.networkDroppedFrames / stats.totalFrames * 100,
                            (float)stats.pacerDroppedFrames / stats.decodedFrames * 100,
@@ -978,8 +982,9 @@ void FFmpegVideoDecoder::stringifyVideoStats(VIDEO_STATS& stats, char* output, i
         } else {
             ret = snprintf(&output[offset],
                            length - offset,
-                           "网络延迟: %s  丢包率：%.2f%%  抖动：%.2f%%\n"
-                           "解码延迟：%.2f ms  帧队列延迟: %.2f ms  平均渲染时间 (含垂直同步): %.2f ms\n",
+                           "%s网络延迟: %s 丢包率: %.2f%% 抖动: %.2f%%\n"
+                           "解码延迟: %.2f ms 帧队列延迟: %.2f ms 平均渲染时间 (含垂直同步): %.2f ms",
+                           offset > 0 && output[offset - 1] != '\n' ? " " : "",
                            rttString,
                            (float)stats.networkDroppedFrames / stats.totalFrames * 100,
                            (float)stats.pacerDroppedFrames / stats.decodedFrames * 100,
@@ -994,6 +999,11 @@ void FFmpegVideoDecoder::stringifyVideoStats(VIDEO_STATS& stats, char* output, i
         }
 
         offset += ret;
+    }
+
+    // A partial statistics window may end after the frame-rate line.
+    while (offset > 0 && (output[offset - 1] == '\n' || output[offset - 1] == ' ')) {
+        output[--offset] = '\0';
     }
 }
 
@@ -2150,6 +2160,18 @@ int FFmpegVideoDecoder::submitDecodeUnit(PDECODE_UNIT du)
             stringifyVideoStats(lastTwoWndStats,
                                 Session::get()->getOverlayManager().getOverlayText(Overlay::OverlayDebug),
                                 Session::get()->getOverlayManager().getOverlayMaxTextLength());
+
+            // Prefix only the on-screen statistics with the client's wall clock.
+            auto& overlayManager = Session::get()->getOverlayManager();
+            char* text = overlayManager.getOverlayText(Overlay::OverlayDebug);
+            const size_t textLength = SDL_strlen(text);
+            const QByteArray clock = QTime::currentTime().toString(QStringLiteral("HH:mm:ss")).toLatin1();
+            const QByteArray prefix = clock + (textLength > 0 ? " " : "");
+            const size_t capacity = overlayManager.getOverlayMaxTextLength();
+            if (textLength + size_t(prefix.size()) < capacity) {
+                SDL_memmove(text + prefix.size(), text, textLength + 1);
+                SDL_memcpy(text, prefix.constData(), size_t(prefix.size()));
+            }
             Session::get()->getOverlayManager().setOverlayTextUpdated(Overlay::OverlayDebug);
         }
 
