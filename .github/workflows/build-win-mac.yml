@@ -72,6 +72,13 @@ jobs:
             bash scripts/generate-dmg.sh Release
           }
 
+      - name: Verify macOS package
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/verify-macos-package.sh "build/installer-Release/Moonlight-${CI_VERSION}.dmg" | tee build/installer-Release/macOS-verification.txt
+
       - name: Upload Binaries (Windows x64)
         uses: actions/upload-artifact@v6
         if: runner.os == 'Windows'
@@ -85,7 +92,9 @@ jobs:
         if: runner.os == 'macOS'
         with:
           name: Moonlight-${{ runner.os }}-${{ env.CI_VERSION }}
-          path: build/installer-Release/*.dmg
+          path: |
+            build/installer-Release/*.dmg
+            build/installer-Release/macOS-verification.txt
           compression-level: 0
           if-no-files-found: error
 

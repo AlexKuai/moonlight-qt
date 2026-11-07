@@ -74,7 +74,12 @@ find $BUILD_FOLDER/app/Moonlight.app/ -name '*.dSYM' | xargs rm -rf
 if [ "$SIGNING_IDENTITY" != "" ]; then
   echo Signing app bundle
   codesign --force --deep --options runtime --timestamp --sign "$SIGNING_IDENTITY" $BUILD_FOLDER/app/Moonlight.app || fail "Signing failed!"
+else
+  echo Ad-hoc signing app bundle for local use
+  codesign --force --deep --sign - "$BUILD_FOLDER/app/Moonlight.app" || fail "Ad-hoc signing failed!"
 fi
+
+codesign --verify --deep --strict "$BUILD_FOLDER/app/Moonlight.app" || fail "Signature verification failed!"
 
 echo Creating DMG
 if [ "$SIGNING_IDENTITY" != "" ]; then
