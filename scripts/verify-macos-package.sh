@@ -55,17 +55,20 @@ magic_values = {bytes.fromhex(value) for value in (
     'feedface', 'cefaedfe', 'feedfacf', 'cffaedfe',
     'cafebabe', 'bebafeca', 'cafebabf', 'bfbafeca')}
 count = 0
+errors = []
 for path in root.rglob('*'):
     if not path.is_file() or path.is_symlink():
         continue
     with path.open('rb') as binary:
         if binary.read(4) not in magic_values:
             continue
-    subprocess.run(['lipo', str(path), '-verify_arch', 'arm64'], check=True)
+    if subprocess.run(['lipo', str(path), '-verify_arch', 'arm64']).returncode != 0:
+        errors.append(f'Missing arm64 architecture: {path}')
+        continue
     local_paths = run_paths(path)
     for entry in local_paths:
         if not entry.startswith(system_roots) and not in_bundle(expand(entry, path)):
-            raise SystemExit(f'Non-portable run path: {path}: {entry}')
+            errors.append(f'Non-portable run path: {path}: {entry}')
     search_paths = [expand(entry, path) for entry in local_paths]
     search_paths += [expand(entry, executable_dir / 'Moonlight') for entry in main_paths]
     linked = subprocess.check_output(['otool', '-arch', 'arm64', '-L', str(path)], text=True)
@@ -80,12 +83,15 @@ for path in root.rglob('*'):
         elif dependency.startswith(('@loader_path/', '@executable_path/')):
             candidates = [expand(dependency, path)]
         else:
-            raise SystemExit(f'Non-portable dependency: {path}: {dependency}')
+            errors.append(f'Non-portable dependency: {path}: {dependency}')
+            continue
         if not any(in_bundle(candidate.resolve()) and candidate.is_file() for candidate in candidates):
-            raise SystemExit(f'Dependency not found in bundle: {path}: {dependency}')
+            errors.append(f'Dependency not found in bundle: {path}: {dependency}')
     count += 1
 if count == 0:
     raise SystemExit('No Mach-O files were inspected')
+if errors:
+    raise SystemExit('\n'.join(errors))
 print(f'Apple Silicon architecture and dependency checks passed for {count} Mach-O files')
 PY
 

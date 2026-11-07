@@ -1,11 +1,22 @@
 """Remove development-only library search paths before signing the app."""
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 
 root = pathlib.Path(sys.argv[1]).resolve(strict=True)
 executable_dir = root / "Contents/MacOS"
+# Moonlight does not use QtSql or QtQuick.LocalStorage. macdeployqt may copy
+# optional SQL drivers whose third-party database clients are not distributable
+# with this app. Match the Windows deployment's --no-sql policy.
+sql_plugins = root / "Contents/PlugIns/sqldrivers"
+if sql_plugins.exists():
+    if sql_plugins.is_symlink() or root not in sql_plugins.resolve().parents:
+        raise SystemExit("SQL plugin directory is outside the application bundle")
+    shutil.rmtree(sql_plugins)
+    print("Removed unused Qt SQL driver plugins")
+
 magic_values = {
     b"\xfe\xed\xfa\xce", b"\xce\xfa\xed\xfe",
     b"\xfe\xed\xfa\xcf", b"\xcf\xfa\xed\xfe",
