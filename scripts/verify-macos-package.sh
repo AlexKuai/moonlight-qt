@@ -51,13 +51,16 @@ def in_bundle(path):
     return path == root or root in path.parents
 
 main_paths = run_paths(executable_dir / 'Moonlight')
+magic_values = {bytes.fromhex(value) for value in (
+    'feedface', 'cefaedfe', 'feedfacf', 'cffaedfe',
+    'cafebabe', 'bebafeca', 'cafebabf', 'bfbafeca')}
 count = 0
 for path in root.rglob('*'):
     if not path.is_file() or path.is_symlink():
         continue
-    kind = subprocess.check_output(['file', '-b', str(path)], text=True)
-    if 'Mach-O' not in kind:
-        continue
+    with path.open('rb') as binary:
+        if binary.read(4) not in magic_values:
+            continue
     subprocess.run(['lipo', str(path), '-verify_arch', 'arm64'], check=True)
     local_paths = run_paths(path)
     for entry in local_paths:

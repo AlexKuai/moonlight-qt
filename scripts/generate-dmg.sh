@@ -71,6 +71,9 @@ macdeployqt $BUILD_FOLDER/app/Moonlight.app $EXTRA_ARGS -qmldir=$SOURCE_ROOT/app
 echo Removing dSYM files from app bundle
 find $BUILD_FOLDER/app/Moonlight.app/ -name '*.dSYM' | xargs rm -rf
 
+echo Removing development-only library search paths
+python3 "$SOURCE_ROOT/scripts/prepare-macos-bundle.py" "$BUILD_FOLDER/app/Moonlight.app" || fail "Bundle path cleanup failed!"
+
 if [ "$SIGNING_IDENTITY" != "" ]; then
   echo Signing app bundle
   codesign --force --deep --options runtime --timestamp --sign "$SIGNING_IDENTITY" $BUILD_FOLDER/app/Moonlight.app || fail "Signing failed!"
