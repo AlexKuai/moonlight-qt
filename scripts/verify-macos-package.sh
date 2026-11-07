@@ -21,7 +21,7 @@ test -f "$binary_path"
 
 codesign --verify --deep --strict "$app_path"
 codesign -dv "$app_path" 2>&1
-lipo -verify_arch arm64 x86_64 "$binary_path"
+lipo "$binary_path" -verify_arch arm64 x86_64
 echo "Main executable architectures: $(lipo -archs "$binary_path")"
 echo "Application version: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app_path/Contents/Info.plist")"
 echo "Minimum system: $(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$app_path/Contents/Info.plist")"
@@ -58,7 +58,7 @@ for path in root.rglob('*'):
     kind = subprocess.check_output(['file', '-b', str(path)], text=True)
     if 'Mach-O' not in kind:
         continue
-    subprocess.run(['lipo', '-verify_arch', 'arm64', str(path)], check=True)
+    subprocess.run(['lipo', str(path), '-verify_arch', 'arm64'], check=True)
     local_paths = run_paths(path)
     for entry in local_paths:
         if not entry.startswith(system_roots) and not in_bundle(expand(entry, path)):
