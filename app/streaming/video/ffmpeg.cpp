@@ -2172,6 +2172,17 @@ int FFmpegVideoDecoder::submitDecodeUnit(PDECODE_UNIT du)
                 SDL_memmove(text + prefix.size(), text, textLength + 1);
                 SDL_memcpy(text, prefix.constData(), size_t(prefix.size()));
             }
+
+            if (overlayManager.isOverlayLite(Overlay::OverlayDebug)) {
+                // Put network/decoder statistics above the clock/video group.
+                // Replace their separator with a newline without growing the text.
+                const QByteArray statsText(text);
+                const auto networkOffset = statsText.indexOf(" 网络: ");
+                if (networkOffset >= 0) {
+                    const QByteArray twoLines = statsText.mid(networkOffset + 1) + '\n' + statsText.left(networkOffset);
+                    SDL_memcpy(text, twoLines.constData(), size_t(twoLines.size()) + 1);
+                }
+            }
             Session::get()->getOverlayManager().setOverlayTextUpdated(Overlay::OverlayDebug);
         }
 

@@ -134,34 +134,48 @@ private slots:
         QCOMPARE(QString::fromUtf8(stored).toUtf8(), stored);
     }
 
+    void multilineTextRemainsCenteredWithinOutline_data()
+    {
+        QTest::addColumn<bool>("lite");
+        QTest::newRow("full") << false;
+        QTest::newRow("lite") << true;
+    }
+
     void multilineTextRemainsCenteredWithinOutline()
     {
+        QFETCH(bool, lite);
         OverlaySink sink;
         Overlay::OverlayManager manager;
         manager.setOverlayRenderer(&sink);
         manager.setOverlayState(Overlay::OverlayDebug, true);
-        manager.setOverlayStateLite(Overlay::OverlayDebug, false);
+        manager.setOverlayStateLite(Overlay::OverlayDebug, lite);
         manager.updateOverlayText(Overlay::OverlayDebug, "WWWWWWWWWW\nI");
         SDL_Surface* surface = manager.getUpdatedOverlaySurface(Overlay::OverlayDebug);
         QVERIFY(surface != nullptr);
         SDL_Surface* rgba = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA32, 0);
         QVERIFY(rgba != nullptr);
-        int left = rgba->w, right = -1;
-        for (int y = rgba->h / 2; y < rgba->h; y++) {
-            const Uint8* row = static_cast<const Uint8*>(rgba->pixels) + y * rgba->pitch;
-            for (int x = 0; x < rgba->w; x++) {
-                if (row[x * 4] > 240 && row[x * 4 + 1] > 240 && row[x * 4 + 2] > 240) {
-                    left = qMin(left, x);
-                    right = qMax(right, x);
+        int left[2] = { rgba->w, rgba->w };
+        int right[2] = { -1, -1 };
+        for (int line = 0; line < 2; line++) {
+            for (int y = line * rgba->h / 2; y < (line + 1) * rgba->h / 2; y++) {
+                const Uint8* row = static_cast<const Uint8*>(rgba->pixels) + y * rgba->pitch;
+                for (int x = 0; x < rgba->w; x++) {
+                    if (row[x * 4] > 240 && row[x * 4 + 1] > 240 && row[x * 4 + 2] > 240) {
+                        left[line] = qMin(left[line], x);
+                        right[line] = qMax(right[line], x);
+                    }
                 }
             }
         }
         const int width = rgba->w;
         SDL_FreeSurface(rgba);
         SDL_FreeSurface(surface);
-        QVERIFY(right >= left);
-        QVERIFY2(qAbs(left + right + 1 - width) <= 2,
-                 qPrintable(QString("Text bounds [%1,%2] are not centered in width %3").arg(left).arg(right).arg(width)));
+        for (int line = 0; line < 2; line++) {
+            QVERIFY(right[line] >= left[line]);
+            QVERIFY2(qAbs(left[line] + right[line] + 1 - width) <= 2,
+                     qPrintable(QString("Line %1 bounds [%2,%3] are not centered in width %4")
+                                .arg(line + 1).arg(left[line]).arg(right[line]).arg(width)));
+        }
     }
 };
 

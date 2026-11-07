@@ -158,8 +158,8 @@ void OverlayManager::notifyOverlayUpdated(OverlayType type)
     SDL_Surface* surface = nullptr;
     if (m_Overlays[type].enabled) {
         TTF_SetFontWrappedAlign(m_Overlays[type].font, TTF_WRAPPED_ALIGN_CENTER);
-        // Lite statistics use a single line. A zero wrap width still honors
-        // explicit newlines without introducing additional wrapping.
+        // Lite statistics use two explicitly separated, centered lines.
+        // A zero wrap width honors newlines without additional wrapping.
         const int wrapWidth = type == OverlayDebug ? (m_Overlays[type].enabledLite ? 0 : 1224) : 1024;
         surface = RenderTextOutlinedWrapped(m_Overlays[type].font,
                                             m_Overlays[type].text,
